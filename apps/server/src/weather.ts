@@ -1,4 +1,5 @@
 import type { RequestHandler } from 'express';
+import { storeWeatherSnapshot } from './weather-storage.js';
 import { z } from 'zod';
 
 const forecast = z.object({ location: z.object({ location_id: z.string(), location_name: z.string() }), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), morning_forecast: z.string(), afternoon_forecast: z.string(), night_forecast: z.string(), summary_forecast: z.string(), summary_when: z.string(), min_temp: z.number().min(-50).max(60), max_temp: z.number().min(-50).max(60) });
@@ -29,14 +30,17 @@ export function createWeatherHandler(upstream: typeof fetch = fetch): RequestHan
       pending = Promise.all([
         read('forecast?'+query.toString(), z.array(forecast).max(200)),
         read('warning?limit=100&sort=-warning_issue__issued', z.array(warning).max(100)),
-      ]).then(([forecasts, warnings]) => {
+      ]).then(async ([forecasts, warnings]) => {
         const body = { forecasts, warnings, source: 'METMalaysia via data.gov.my', sourceUrl: 'https://developer.data.gov.my/realtime-api/weather', license: 'CC BY 4.0', limited: forecasts.records.length === 200 };
+        const archive = { status: key ? 'not-applicable' : await storeWeatherSnapshot(body) };
+        const storedBody = { ...body, archive };
         if (cache.size > 50) cache.clear();
-        cache.set(key, { expires: Date.now() + (forecasts.available && warnings.available ? 60000 : 10000), body });
-        return body;
+        cache.set(key, { expires: Date.now() + (forecasts.available && warnings.available ? 60000 : 10000), body: storedBody });
+        return storedBody;
       }).finally(() => inFlight.delete(key));
       inFlight.set(key, pending);
     }
     res.json(await pending);
   };
 }
+
