@@ -18,7 +18,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present",
+    "build": "tsc --build --force --pretty false && npm run build --workspace @banjir-ready/web",
     "demo-acceptance": "npm run demo-acceptance --workspace @banjir-ready/web"
   },
   "devDependencies": {
@@ -52,3 +52,4 @@
   },
   "packageManager": "npm@10.9.2"
 }
+
