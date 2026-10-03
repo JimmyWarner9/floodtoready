@@ -236,3 +236,12 @@ html { background:#f6f7f3; color:#243b32; }
 .model-upload input { display:block; width:100%; margin-top:10px; font-size:12px; }
 .model-section > small { display:block; font-size:12px; color:#526751; line-height:1.6; }
 @media(max-width:700px) { .model-upload-panel { flex-direction:column; align-items:stretch; } .model-upload { flex-basis:auto; } }
+.forecast-search { margin:24px 0; }
+.forecast-search label,.forecast-select { display:block; font-size:14px; font-weight:600; }
+.forecast-search > div { display:flex; gap:12px; margin-top:10px; }
+.forecast-search input { flex:1; min-width:0; padding:12px 16px; border:1px solid #b9cbb0; background:white; border-radius:12px; min-height:44px; }
+.forecast-search button { padding:12px 24px; background:#254535; color:white; border:0; border-radius:12px; min-height:44px; }
+.forecast-select select { display:block; max-width:100%; min-height:44px; padding:10px 14px; margin:10px 0 20px; border:1px solid #b9cbb0; border-radius:10px; background:white; }
+.forecast-search :focus-visible,.forecast-select select:focus-visible { outline:3px solid #006299; outline-offset:3px; }
+.model-card strong { overflow-wrap:anywhere; }
+@media(max-width:500px){.forecast-search > div{flex-direction:column;}}

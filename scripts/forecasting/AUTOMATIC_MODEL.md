@@ -1,11 +1,16 @@
-# Automatic seasonal estimates
+# Current location forecasts
 
-GET /api/predictions trains a seasonal ridge regression for Shah Alam (3.0738, 101.5183). It fetches three years of daily ERA5 reanalysis mean temperature and precipitation from Open-Meteo. Historical data ends ten days before today to accommodate ERA5 publication delay. This is gridded reconstructed weather, not station measurements. Features are three annual Fourier harmonics; the model captures seasonal patterns rather than current approaching weather systems.
+The website now uses current Open-Meteo numerical weather forecasts rather than the earlier Shah Alam seasonal model. The Python training script remains a separate research starter.
 
-The earliest 80% trains a fixed model and the latest 20% evaluates mean absolute error against training-only monthly averages. A target is withheld if it does not improve that baseline. A passing target is then refitted on all historical records to estimate tomorrow. These small baseline improvements do not establish operational forecast skill or extreme-event performance. No flood or thunderstorm labels are inferred from rainfall: those targets remain unavailable without appropriate event datasets.
+GET /api/predictions defaults to Shah Alam. ?search= searches Malaysian place names; ?id= resolves a selected place and verifies country MY before fetching a seven-day forecast. Coverage depends on the place catalogue, not every address. The forecast covers a location point, not a whole state.
 
-The endpoint uses an 8-second upstream timeout, bounded JSON, field/date validation, safe 503 errors and a one-hour cache. It sends only the fixed public coordinates and weather parameters; no household data or uploaded reports are transmitted. Report uploads remain in browser memory. Weather failure does not block official information or emergency actions.
+Cards show daily minimum/maximum temperature, total precipitation, maximum daily precipitation probability and thunderstorm conditions from WMO codes 95/96/99. Absence of modelled storms does not guarantee safety. Flood prediction remains unavailable. Official METMalaysia information is separately displayed. These are provider forecasts, not predictions from a newly trained local model.
 
-Source and attribution: https://open-meteo.com/en/docs/historical-weather-api — Open-Meteo / ERA5, CC BY 4.0. The public Open-Meteo service is intended for non-commercial use under its current terms; review https://open-meteo.com/en/terms before commercial deployment and use its appropriate paid endpoint/key if required. This integration was requested to read real weather history automatically. It is separate from official METMalaysia feeds and warnings.
+Requests use bounded validated JSON, five-second per-provider timeouts, safe unavailable responses and a fifteen-minute forecast cache. Only searched public place names and resolved public coordinates go to Open-Meteo; household data is not sent. Do not enter personal addresses. Application code does not log searches. Place-result cache is bounded and in memory.
 
-Before relying on predictions, evaluate multiple seasons, station comparisons, geographically separate locations and extreme weather. Do not interpret these estimates as a flood safety assessment.
+Attribution: Open-Meteo / GeoNames, CC BY 4.0.
+https://open-meteo.com/en/docs
+https://open-meteo.com/en/docs/geocoding-api
+The public API is for non-commercial use under current terms. Review https://open-meteo.com/en/terms before commercial deployment.
+
+Verification: production build, live Kuching search and seven-day forecast, offline and malformed-provider fallback checks.

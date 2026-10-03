@@ -1,56 +1,38 @@
 import type { RequestHandler } from 'express';
-// Seasonal ridge baseline: no invented flood or storm event labels.
-const point = { latitude: 3.0738, longitude: 101.5183 }; // Shah Alam, not all Selangor
-function features(day: string) {
-  const t = Date.parse(day + 'T00:00:00Z') / 86400000;
-  return [1, ...[1, 2, 3].flatMap(k => [Math.sin(2*Math.PI*k*t/365.25), Math.cos(2*Math.PI*k*t/365.25)])];
-}
-function fit(days: string[], values: number[]) {
-  const x = days.map(features); const n = 7;
-  const a = Array.from({length:n},(_,i)=>Array.from({length:n+1},(_,j)=>j === n ? x.reduce((s,r,k)=>s+r[i]!*values[k]!,0) : x.reduce((s,r)=>s+r[i]!*r[j]!,0)+(i===j && i>0 ? 1 : 0)));
-  for(let k=0;k<n;k++) {
-    const pivot = a[k]![k]!; if(Math.abs(pivot)<1e-10) throw new Error('fit');
-    a[k] = a[k]!.map(v=>v/pivot);
-    for(let i=0;i<n;i++) if(i!==k) { const f=a[i]![k]!; a[i]=a[i]!.map((v,j)=>v-f*a[k]![j]!); }
-  }
-  return a.map(r=>r[n]!);
-}
-export function createModelPredictionsHandler(upstream: typeof fetch = fetch): RequestHandler {
-  let cached: { expires: number; body: unknown } | undefined;
-  return async (_req, res) => {
-    if(cached && cached.expires>Date.now()) { res.json(cached.body); return; }
-    try {
-      const today = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-      const end = new Date(Date.parse(today+'T00:00:00Z')-10*86400000).toISOString().slice(0,10);
-      const start = new Date(Date.parse(end+'T00:00:00Z')-1095*86400000).toISOString().slice(0,10);
-      const url = new URL('https://archive-api.open-meteo.com/v1/archive');
-      url.search = new URLSearchParams({...Object.fromEntries(Object.entries(point).map(([k,v])=>[k,String(v)])),start_date:start,end_date:end,daily:'temperature_2m_mean,precipitation_sum',timezone:'Asia/Kuala_Lumpur',models:'era5'}).toString();
-      const response = await upstream(url,{signal:AbortSignal.timeout(8000),redirect:'error'});
-      if(!response.ok || !response.headers.get('content-type')?.includes('json')) throw new Error('upstream');
-      const raw = await response.text(); if(raw.length>500000) throw new Error('size');
-      const data = JSON.parse(raw).daily as {time:string[];temperature_2m_mean:number[];precipitation_sum:number[]};
-      if(!data || !Array.isArray(data.time) || data.time.length<1000 || data.time.length>1100) throw new Error('data');
-      for(const key of ['temperature_2m_mean','precipitation_sum'] as const) {
-        if(!Array.isArray(data[key]) || data[key].length!==data.time.length || data[key].some(v=>typeof v!=='number'||!Number.isFinite(v))) throw new Error('values');
-      }
-      if(data.time.some((d,i)=>!/^\d{4}-\d{2}-\d{2}$/.test(d)|| (i>0 && Date.parse(d)-Date.parse(data.time[i-1]!)!==86400000))) throw new Error('dates');
-      if(data.precipitation_sum.some(v=>v<0)||data.temperature_2m_mean.some(v=>v < -50 || v>60)) throw new Error('range');
-      const next = new Date(Date.parse(today+'T00:00:00Z')+86400000).toISOString().slice(0,10);
-      const targets: Record<string,unknown> = {storm_observed:{available:false,reason:'No verified storm event observations'},flood_observed:{available:false,reason:'River levels and flood event observations required'}};
-      const split=Math.floor(data.time.length*.8);
-      for(const [target,column] of [['temperature_c','temperature_2m_mean'],['rainfall_mm','precipitation_sum']] as const) {
-        const values=data[column], trainDays=data.time.slice(0,split), trainValues=values.slice(0,split);
-        const weights=fit(trainDays,trainValues);
-        const predict=(d:string,w:number[])=>{const v=features(d).reduce((s,x,i)=>s+x*w[i]!,0);return target==='rainfall_mm'?Math.max(0,v):v;};
-        const monthly = Array.from({length:12},(_,month)=>trainValues.filter((_,i)=>Number(trainDays[i]!.slice(5,7))===month+1));
-        const means=monthly.map(v=>v.reduce((s,x)=>s+x,0)/v.length);
-        let error=0,baseline=0;
-        for(let i=split;i<values.length;i++){error+=Math.abs(predict(data.time[i]!,weights)-values[i]!);baseline+=Math.abs(means[Number(data.time[i]!.slice(5,7))-1]!-values[i]!);}
-        error/=values.length-split;baseline/=values.length-split;
-        targets[target]={available:error<baseline,model_error:error,baseline_error:baseline,next_day_prediction:error<baseline?predict(next,fit(data.time,values)):null,reason:error<baseline?'Seasonal experimental estimate':'Did not beat monthly seasonal baseline'};
-      }
-      const body={experimental:true,location:'Shah Alam · seasonal model / model bermusim',prediction_date:next,source:'Open-Meteo / ERA5 reanalysis',sourceUrl:'https://open-meteo.com/en/docs/historical-weather-api',license:'CC BY 4.0',fetchedAt:new Date().toISOString(),history_start:start,history_end:end,method:'Seasonal ridge regression; chronological 80/20 holdout; monthly baseline',targets};
-      cached={expires:Date.now()+3600000,body};res.setHeader('Cache-Control','public, s-maxage=3600');res.json(body);
-    } catch {res.status(503).json({available:false,code:'MODEL_DATA_UNAVAILABLE'});}
-  };
+import { z } from 'zod';
+const place = z.object({id:z.number().int(),name:z.string().max(150),latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180),country_code:z.literal('MY'),admin1:z.string().optional()});
+const daySchema=z.object({time:z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).length(7),temperature_2m_max:z.array(z.number().min(-50).max(60)).length(7),temperature_2m_min:z.array(z.number().min(-50).max(60)).length(7),precipitation_sum:z.array(z.number().min(0).max(2000)).length(7),precipitation_probability_max:z.array(z.number().min(0).max(100).nullable()).length(7),weather_code:z.array(z.number().int()).length(7)});
+export function createModelPredictionsHandler(upstream: typeof fetch=fetch): RequestHandler {
+ const cache=new Map<string,{expires:number;body:unknown}>();
+ async function read(url:URL) {
+  const response=await upstream(url,{signal:AbortSignal.timeout(5000),redirect:'error'});
+  if(!response.ok||!response.headers.get('content-type')?.includes('json'))throw Error('upstream');
+  const text=await response.text();if(text.length>200000)throw Error('size');return JSON.parse(text);
+ }
+ return async(req,res)=>{
+  try {
+   const query=req.query.search, id=req.query.id;
+   if(query!==undefined && (typeof query!=='string'||query.trim().length<2||query.length>80)){res.status(400).json({code:'INVALID_LOCATION'});return;}
+   if(id!==undefined && (typeof id!=='string'||!/^\d{1,10}$/.test(id))){res.status(400).json({code:'INVALID_LOCATION'});return;}
+   const key=query!==undefined?'search:'+query:'id:'+(id??'default');
+   const saved=cache.get(key);if(saved&&saved.expires>Date.now()){res.json(saved.body);return;}
+   let selected={id:0,name:'Shah Alam',latitude:3.0738,longitude:101.5183,country_code:'MY' as const,admin1:'Selangor'};
+   if(typeof query==='string'){
+    const url=new URL('https://geocoding-api.open-meteo.com/v1/search');url.search=new URLSearchParams({name:query.trim(),countryCode:'MY',count:'10',language:'en',format:'json'}).toString();
+    const raw=await read(url);const locations=z.array(z.unknown()).max(10).parse(raw.results??[]).flatMap(v=>{const parsed=place.safeParse(v);return parsed.success?[parsed.data]:[];});
+    const body={locations};if(cache.size>100)cache.clear();cache.set(key,{expires:Date.now()+3600000,body});res.json(body);return;
+   }
+   if(typeof id==='string'){
+    const url=new URL('https://geocoding-api.open-meteo.com/v1/get');url.search=new URLSearchParams({id}).toString();
+    const parsed=place.safeParse(await read(url));if(!parsed.success){res.status(404).json({code:'LOCATION_NOT_FOUND'});return;}selected={...parsed.data,admin1:parsed.data.admin1??''};
+   }
+   const url=new URL('https://api.open-meteo.com/v1/forecast');
+   url.search=new URLSearchParams({latitude:String(selected.latitude),longitude:String(selected.longitude),daily:'temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weather_code',timezone:'Asia/Kuala_Lumpur',forecast_days:'7'}).toString();
+   const raw=await read(url),daily=daySchema.parse(raw.daily);
+   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+   if(daily.time[0]!==today||daily.time.some((v,i)=>i>0&&Date.parse(v)-Date.parse(daily.time[i-1]!)!==86400000))throw Error('stale');
+   const body={location:selected,source:'Open-Meteo numerical weather forecast',sourceUrl:'https://open-meteo.com/en/docs',license:'CC BY 4.0',fetchedAt:new Date().toISOString(),days:daily.time.map((date,i)=>({date,min:daily.temperature_2m_min[i],max:daily.temperature_2m_max[i],rainfall:daily.precipitation_sum[i],rainChance:daily.precipitation_probability_max[i],code:daily.weather_code[i]})),floodAvailable:false};
+   if(cache.size>100)cache.clear();cache.set(key,{expires:Date.now()+900000,body});res.setHeader('Cache-Control','public, s-maxage=900');res.json(body);
+  }catch{res.status(503).json({available:false,code:'FORECAST_UNAVAILABLE'});}
+ };
 }

@@ -1,22 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from './localization/LanguageProvider';
-
-const keys = ['temperature_c', 'rainfall_mm', 'storm_observed', 'flood_observed'] as const;
-type Result = { available: boolean; next_day_prediction?: number | null; model_error?: number; baseline_error?: number };
-type Report = { experimental: true; location: string; prediction_date: string; targets: Record<string, Result> };
-function validate(value: unknown): Report {
-  const r = value as Report;
-  if (!r || r.experimental !== true || typeof r.location !== 'string' || r.location.length > 120 || !/^\d{4}-\d{2}-\d{2}$/.test(r.prediction_date) || !r.targets) throw new Error('invalid');
-  for (const key of keys) {
-    const t = r.targets[key];
-    if (!t || typeof t.available !== 'boolean') throw new Error('invalid');
-    if (t.available && (typeof t.next_day_prediction !== 'number' || !Number.isFinite(t.next_day_prediction) || typeof t.model_error !== 'number' || !Number.isFinite(t.model_error) || t.model_error < 0 || typeof t.baseline_error !== 'number' || !Number.isFinite(t.baseline_error) || t.baseline_error <= t.model_error)) throw new Error('invalid');
-    if (t.available && key.endsWith('observed') && (t.next_day_prediction! < 0 || t.next_day_prediction! > 1)) throw new Error('invalid');
-    if (t.available && key === 'rainfall_mm' && t.next_day_prediction! < 0) throw new Error('invalid');
-  }
-  return r;
-}
-function ModelIcon({ index }: { index: number }) {
+type Place={id:number;name:string;admin1?:string};
+type Day={date:string;min:number;max:number;rainfall:number;rainChance:number|null;code:number};
+type Forecast={location:Place;fetchedAt:string;days:Day[]};function ModelIcon({ index }: { index: number }) {
  const paths = [
  <><path d="M10 5a3 3 0 0 1 6 0v11a5 5 0 1 1-6 0Z" /><path d="M13 9v12" /></>,
  <><path d="M7 16a5 5 0 0 1-1-10 7 7 0 0 1 13 1 4 4 0 0 1 0 9" /><path d="m8 21-1 3m8-3-1 3m8-3-1 3" /></>,
@@ -25,36 +11,44 @@ function ModelIcon({ index }: { index: number }) {
  ];
  return <svg viewBox="0 0 30 32" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[index]}</svg>;
 }
-export function ModelPredictions() {
-  const { language } = useLanguage(); const ms = language === 'ms';
-  const [report, setReport] = useState<Report | null>(null);
-
-
-  const [loading, setLoading] = useState(true);
-  const [automatic, setAutomatic] = useState(false);
-  useEffect(() => {
-    const abort = new AbortController();
-    fetch('/api/predictions', { signal: abort.signal }).then(async response => {
-      if (!response.ok) throw new Error('unavailable');
-      const body = validate(await response.json());
-      if (!abort.signal.aborted) { setReport(body); setAutomatic(true); }
-    }).catch(() => {}).finally(() => { if (!abort.signal.aborted) setLoading(false); });
-    return () => abort.abort();
-  }, []);
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  const expired = !!report && report.prediction_date < today;
-  const labels = ms ? ['Suhu', 'Hujan', 'Ribut petir', 'Kejadian banjir'] : ['Temperature', 'Rainfall', 'Thunderstorms', 'Flood events'];
-  return <section className="model-section" aria-labelledby="model-heading">
-    <div className="section-eyebrow">{ms ? 'PEMBELAJARAN MESIN · EKSPERIMEN' : 'MACHINE LEARNING · EXPERIMENTAL'}</div>
-    <h3 id="model-heading">{ms ? 'Corak hari ini, pandangan esok' : 'Today’s patterns, tomorrow’s outlook'}</h3>
-    <p>{ms ? 'Anggaran penyelidikan daripada data sejarah. Bukan ramalan atau amaran rasmi. Skor rendah tidak bermaksud sesuatu tempat selamat.' : 'Research estimates from historical data. These are not official forecasts or warnings. A low score does not mean a place is safe.'}</p>
-    <p className="model-status" role="status">{report ? `${report.location} · ${report.prediction_date}${expired ? (ms ? ' · Laporan tamat tempoh' : ' · Expired report') : ''}` : (ms ? 'Anggaran automatik tidak tersedia buat masa ini. Cuba segarkan halaman sebentar lagi.' : 'Automatic estimates are currently unavailable. Try refreshing again shortly.')}</p>
-    {loading && <p role="status">{ms ? 'Membaca sejarah cuaca dan menguji model…' : 'Reading weather history and testing models…'}</p>}
-    {automatic && <p className="model-source">{ms ? 'Model bermusim untuk Shah Alam sahaja. Data ERA5 ialah anggaran analisis semula, bukan bacaan stesen. Tidak mengesan ribut atau banjir esok.' : 'Seasonal model for Shah Alam only. ERA5 data is reanalysis estimates, not station readings. This does not detect tomorrow’s storms or floods.'} <a href="https://open-meteo.com/en/docs/historical-weather-api" target="_blank" rel="noreferrer">Open-Meteo / ERA5 · CC BY 4.0 ↗</a></p>}
-    <div className="model-grid">{keys.map((key, i) => {
-      const t = report?.targets[key]; const usable = t?.available && !expired;
-      return <article className="model-card" key={key}><div className="model-card-top"><span className="model-icon"><ModelIcon index={i} /></span><span className="model-index">0{i + 1}</span></div><h4>{labels[i]}</h4><strong>{usable ? (key.endsWith('observed') ? `${t.next_day_prediction!.toFixed(2)} / 1` : `${t.next_day_prediction!.toFixed(1)} ${i === 0 ? '°C' : 'mm'}`) : '—'}</strong><p>{usable ? (key.endsWith('observed') ? (ms ? 'Skor eksperimen, bukan kebarangkalian' : 'Experimental score, not a probability') : (ms ? 'Anggaran hari berikutnya' : 'Next-day estimate')) : (ms ? 'Anggaran tidak tersedia' : 'Estimate unavailable')}</p>{usable && <small>{key.endsWith('observed') ? 'Brier' : 'MAE'}: {t.model_error!.toFixed(3)} · {ms ? 'Asas' : 'Baseline'}: {t.baseline_error!.toFixed(3)}</small>}</article>;
-    })}</div>
-    <small>{ms ? 'Anggaran dimuatkan secara automatik. Model eksperimen bermusim untuk Shah Alam; bukan ramalan atau amaran rasmi.' : 'Estimates load automatically. Experimental seasonal model for Shah Alam; not an official forecast or warning.'}</small>
-  </section>;
+export function ModelPredictions(){
+ const {language}=useLanguage();const ms=language==='ms';
+ const [search,setSearch]=useState(''),[places,setPlaces]=useState<Place[]>([]),[id,setId]=useState<number|null>(null);
+ const [forecast,setForecast]=useState<Forecast|null>(null),[loading,setLoading]=useState(true),[searching,setSearching]=useState(false),[error,setError]=useState('');
+ const [dateIndex,setDateIndex]=useState(1);
+ useEffect(()=>{
+  const controller=new AbortController();setLoading(true);setForecast(null);setError('');
+  fetch('/api/predictions'+(id===null?'':'?id='+id),{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error();const body=await r.json() as Forecast;
+   if(!Array.isArray(body.days)||body.days.length!==7||!body.location||typeof body.location.name!=='string'||body.days.some(d=>![d.min,d.max,d.rainfall,d.code].every(Number.isFinite)))throw Error();
+   if(!controller.signal.aborted)setForecast(body);
+  }).catch(()=>{if(!controller.signal.aborted)setError(ms?'Ramalan tidak tersedia. Cuba pilih tempat semula.':'Forecast unavailable. Try selecting the location again.');}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+  return()=>controller.abort();
+ },[id,ms]);
+ const day=forecast?.days[dateIndex];
+ const storm=day&&[95,96,99].includes(day.code);
+ return <section className="model-section" aria-labelledby="model-heading">
+  <div className="section-eyebrow">{ms?'RAMALAN CUACA · LOKASI MALAYSIA':'WEATHER FORECAST · MALAYSIAN LOCATIONS'}</div>
+  <h3 id="model-heading">{ms?'Cuaca di tempat anda':'Weather where you are'}</h3>
+  <p>{ms?'Ramalan model cuaca semasa untuk tempat yang dipilih. Cari bandar atau pekan di Malaysia. Ramalan ini berasingan daripada amaran rasmi METMalaysia.':'Current weather model forecasts for your selected place. Search Malaysian cities and towns. These forecasts are separate from official METMalaysia warnings.'}</p>
+  <form className="forecast-search" onSubmit={async e=>{
+   e.preventDefault();setSearching(true);setPlaces([]);setError('');
+   try{const r=await fetch('/api/predictions?search='+encodeURIComponent(search.trim()),{signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error();const body=await r.json() as {locations:Place[]};if(!Array.isArray(body.locations))throw Error();setPlaces(body.locations);if(!body.locations.length)setError(ms?'Tempat tidak ditemui. Cuba bandar berdekatan.':'Place not found. Try a nearby town.');}
+   catch{setError(ms?'Carian tidak tersedia. Cuba lagi.':'Search unavailable. Try again.');}finally{setSearching(false);}
+  }}>
+   <label htmlFor="forecast-place">{ms?'Cari tempat':'Search a place'}</label>
+   <div><input id="forecast-place" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Kuala Lumpur, Johor Bahru, Kuching…" minLength={2} maxLength={80} required/><button disabled={searching}>{searching?(ms?'Mencari…':'Searching…'):(ms?'Cari':'Search')}</button></div>
+  </form>
+  {places.length>0&&<label className="forecast-select">{ms?'Pilih padanan lokasi':'Choose a matching location'}<select value={id??''} onChange={e=>{if(e.target.value){setId(Number(e.target.value));setDateIndex(1);}}}><option value="">{ms?'Pilih tempat':'Select a place'}</option>{places.map(p=><option key={p.id} value={p.id}>{p.name}{p.admin1?' · '+p.admin1:''}</option>)}</select></label>}
+  {loading&&<p role="status">{ms?'Memuatkan ramalan semasa…':'Loading current forecasts…'}</p>}
+  {error&&<p role="alert">{error}</p>}
+  {forecast&&<><p className="model-status">{forecast.location.name} · {forecast.location.admin1} · {ms?'Diperoleh':'Retrieved'} {new Date(forecast.fetchedAt).toLocaleString(ms?'ms-MY':'en-MY',{timeZone:'Asia/Kuala_Lumpur'})} MYT</p>
+   <label className="forecast-select">{ms?'Tarikh ramalan':'Forecast date'}<select value={dateIndex} onChange={e=>setDateIndex(Number(e.target.value))}>{forecast.days.map((d,i)=><option key={d.date} value={i}>{d.date}{i===0?(ms?' · Hari ini':' · Today'):i===1?(ms?' · Esok':' · Tomorrow'):''}</option>)}</select></label></>}
+  <div className="model-grid">{(ms?['Suhu','Hujan','Ribut petir','Kejadian banjir']:['Temperature','Rainfall','Thunderstorms','Flood events']).map((label,i)=><article className="model-card" key={label}>
+   <div className="model-card-top"><span className="model-icon"><ModelIcon index={i}/></span><span className="model-index">0{i+1}</span></div><h4>{label}</h4>
+   <strong>{!day?'—':i===0?day.min.toFixed(0)+'–'+day.max.toFixed(0)+' °C':i===1?day.rainfall.toFixed(1)+' mm':i===2?(storm?(ms?'Diramal':'Forecast'):(ms?'Tidak ditunjukkan':'Not indicated')):'—'}</strong>
+   <p>{i===0?(ms?'Minimum–maksimum harian':'Daily minimum–maximum'):i===1?(ms?'Jumlah hujan harian':'Daily precipitation total'):i===2?(ms?'Berdasarkan kod cuaca model; bukan amaran':'From model weather code; not a warning'):(ms?'Ramalan banjir setempat tidak tersedia.':'Local flood prediction unavailable.')}</p>
+   {day&&i===1&&<small>{ms?'Peluang hujan':'Precipitation chance'}: {day.rainChance===null?(ms?'Tidak tersedia':'Unavailable'):day.rainChance+'%'}</small>}
+  </article>)}</div>
+  <small>{ms?'Sumber: ':'Source: '}<a href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Open-Meteo · CC BY 4.0 ↗</a> · {ms?'Ramalan untuk titik lokasi, bukan seluruh negeri. Ketiadaan ribut dalam model tidak menjamin cuaca selamat. Semak amaran rasmi.':'Forecasts cover a location point, not an entire state. Absence of modelled thunderstorms does not guarantee safe weather. Check official warnings.'}</small>
+ </section>;
 }
