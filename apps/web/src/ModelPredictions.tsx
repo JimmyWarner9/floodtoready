@@ -30,6 +30,25 @@ export function ModelPredictions(){
   <div className="section-eyebrow">{ms?'RAMALAN CUACA · LOKASI MALAYSIA':'WEATHER FORECAST · MALAYSIAN LOCATIONS'}</div>
   <h3 id="model-heading">{ms?'Cuaca di tempat anda':'Weather where you are'}</h3>
   <p>{ms?'Ramalan model cuaca semasa untuk tempat yang dipilih. Cari bandar atau pekan di Malaysia. Ramalan ini berasingan daripada amaran rasmi METMalaysia.':'Current weather model forecasts for your selected place. Search Malaysian cities and towns. These forecasts are separate from official METMalaysia warnings.'}</p>
+  <label className="forecast-select">{ms ? 'Pilihan wilayah Malaysia' : 'Malaysian region shortcuts'}
+   <select defaultValue="" onChange={async e=>{
+    const town=e.target.value;if(!town)return;setSearch(town);setSearching(true);setPlaces([]);setError('');
+    try{const r=await fetch('/api/predictions?search='+encodeURIComponent(town),{signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error();const body=await r.json() as {locations:Place[]};if(!Array.isArray(body.locations)||!body.locations.length)throw Error();setPlaces(body.locations);setId(body.locations[0]!.id);setDateIndex(1);}
+    catch{setError(ms?'Lokasi tidak tersedia. Cuba carian di bawah.':'Location unavailable. Try searching below.');}finally{setSearching(false);}
+   }}>
+    <option value="">{ms ? 'Pilih negeri / wilayah' : 'Choose a state / territory'}</option>
+    <optgroup label={ms ? 'Pantai Timur Semenanjung' : 'East Coast · Peninsular Malaysia'}>
+     <option value="Kota Bharu">Kelantan · Kota Bharu</option><option value="Kuala Terengganu">Terengganu · Kuala Terengganu</option><option value="Kuantan">Pahang · Kuantan</option>
+    </optgroup>
+    <optgroup label={ms ? 'Semenanjung · negeri lain' : 'Peninsular Malaysia · other states'}>
+     <option value="Kangar">Perlis · Kangar</option><option value="Alor Setar">Kedah · Alor Setar</option><option value="George Town">Pulau Pinang · George Town</option><option value="Ipoh">Perak · Ipoh</option><option value="Shah Alam">Selangor · Shah Alam</option><option value="Seremban">Negeri Sembilan · Seremban</option><option value="Melaka">Melaka</option><option value="Johor Bahru">Johor · Johor Bahru</option><option value="Kuala Lumpur">W.P. Kuala Lumpur</option><option value="Putrajaya">W.P. Putrajaya</option>
+    </optgroup>
+    <optgroup label={ms ? 'Malaysia Timur' : 'East Malaysia'}>
+     <option value="Kota Kinabalu">Sabah · Kota Kinabalu</option><option value="Kuching">Sarawak · Kuching</option><option value="Labuan">W.P. Labuan</option>
+    </optgroup>
+   </select>
+  </label>
+  <small>{ms ? 'Pilihan negeri membuka ramalan bandar yang tertera. Cari bandar lain di bawah untuk lokasi yang lebih dekat.' : 'State shortcuts open forecasts for the named town. Search below for a town closer to you.'}</small>
   <form className="forecast-search" onSubmit={async e=>{
    e.preventDefault();setSearching(true);setPlaces([]);setError('');
    try{const r=await fetch('/api/predictions?search='+encodeURIComponent(search.trim()),{signal:AbortSignal.timeout(12000)});if(!r.ok)throw Error();const body=await r.json() as {locations:Place[]};if(!Array.isArray(body.locations))throw Error();setPlaces(body.locations);if(!body.locations.length)setError(ms?'Tempat tidak ditemui. Cuba bandar berdekatan.':'Place not found. Try a nearby town.');}
