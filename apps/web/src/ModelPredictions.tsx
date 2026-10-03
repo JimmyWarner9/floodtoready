@@ -16,6 +16,15 @@ function validate(value: unknown): Report {
   }
   return r;
 }
+function ModelIcon({ index }: { index: number }) {
+ const paths = [
+ <><path d="M10 5a3 3 0 0 1 6 0v11a5 5 0 1 1-6 0Z" /><path d="M13 9v12" /></>,
+ <><path d="M7 16a5 5 0 0 1-1-10 7 7 0 0 1 13 1 4 4 0 0 1 0 9" /><path d="m8 21-1 3m8-3-1 3m8-3-1 3" /></>,
+ <><path d="M7 16a5 5 0 0 1-1-10 7 7 0 0 1 13 1 4 4 0 0 1 0 9" /><path d="m15 13-5 8h5l-3 7 9-11h-6l3-4" /></>,
+ <><path d="m4 12 10-8 10 8M7 11v8m14-8v8M11 17v-5h6v5" /><path d="M3 23q3-4 6 0t6 0 6 0M3 28q3-4 6 0t6 0 6 0" /></>
+ ];
+ return <svg viewBox="0 0 30 32" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[index]}</svg>;
+}
 export function ModelPredictions() {
   const { language } = useLanguage(); const ms = language === 'ms';
   const [report, setReport] = useState<Report | null>(null);
@@ -30,13 +39,13 @@ export function ModelPredictions() {
     <p className="model-status" role="status">{report ? `${report.location} · ${report.prediction_date}${expired ? (ms ? ' · Laporan tamat tempoh' : ' · Expired report') : ''}` : (ms ? 'Model belum dilatih. Muatkan laporan model yang telah diuji untuk melihat anggaran.' : 'No trained model loaded. Load a tested model report to view estimates.')}</p>
     <div className="model-grid">{keys.map((key, i) => {
       const t = report?.targets[key]; const usable = t?.available && !expired;
-      return <article className="model-card" key={key}><span className="model-index">0{i + 1}</span><h4>{labels[i]}</h4><strong>{usable ? (key.endsWith('observed') ? `${t.next_day_prediction!.toFixed(2)} / 1` : `${t.next_day_prediction!.toFixed(1)} ${i === 0 ? '°C' : 'mm'}`) : '—'}</strong><p>{usable ? (key.endsWith('observed') ? (ms ? 'Skor eksperimen, bukan kebarangkalian' : 'Experimental score, not a probability') : (ms ? 'Anggaran hari berikutnya' : 'Next-day estimate')) : (ms ? 'Anggaran tidak tersedia' : 'Estimate unavailable')}</p>{usable && <small>{key.endsWith('observed') ? 'Brier' : 'MAE'}: {t.model_error!.toFixed(3)} · {ms ? 'Asas' : 'Baseline'}: {t.baseline_error!.toFixed(3)}</small>}</article>;
+      return <article className="model-card" key={key}><div className="model-card-top"><span className="model-icon"><ModelIcon index={i} /></span><span className="model-index">0{i + 1}</span></div><h4>{labels[i]}</h4><strong>{usable ? (key.endsWith('observed') ? `${t.next_day_prediction!.toFixed(2)} / 1` : `${t.next_day_prediction!.toFixed(1)} ${i === 0 ? '°C' : 'mm'}`) : '—'}</strong><p>{usable ? (key.endsWith('observed') ? (ms ? 'Skor eksperimen, bukan kebarangkalian' : 'Experimental score, not a probability') : (ms ? 'Anggaran hari berikutnya' : 'Next-day estimate')) : (ms ? 'Anggaran tidak tersedia' : 'Estimate unavailable')}</p>{usable && <small>{key.endsWith('observed') ? 'Brier' : 'MAE'}: {t.model_error!.toFixed(3)} · {ms ? 'Asas' : 'Baseline'}: {t.baseline_error!.toFixed(3)}</small>}</article>;
     })}</div>
-    <label className="model-upload">{ms ? 'Muatkan forecast-report.json' : 'Load forecast-report.json'}<input type="file" accept=".json,application/json" onChange={async e => {
+    <div className="model-upload-panel"><div><h4>{ms ? 'Mulakan dengan laporan anda' : 'Start with your report'}</h4><p>{ms ? 'Muatkan laporan yang telah dilatih dan diuji untuk mengisi kad di atas.' : 'Load a trained and tested report to populate the cards above.'}</p></div><label className="model-upload">{ms ? 'Muatkan forecast-report.json' : 'Load forecast-report.json'}<input type="file" accept=".json,application/json" onChange={async e => {
       const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
       setError(false); setReport(null);
       try { if (file.size > 100000) throw new Error('large'); setReport(validate(JSON.parse(await file.text()))); } catch { setError(true); }
-    }} /></label>
+    }} /></label></div>
     {error && <p role="alert">{ms ? 'Laporan tidak sah. Gunakan fail daripada skrip latihan.' : 'Invalid report. Use the file produced by the training script.'}</p>}
     <small>{ms ? 'Fail dibaca dalam pelayar sahaja dan tidak disimpan. Muatkan semula selepas menyegarkan halaman.' : 'The file is read only in your browser and is not saved. Reload it after refreshing the page.'}</small>
   </section>;
