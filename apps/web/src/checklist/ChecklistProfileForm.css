@@ -1,0 +1,79 @@
+.checklist-profile {
+  min-width: 0;
+}
+
+.checklist-profile h3 {
+  color: #123f3b;
+  line-height: 1.25;
+  margin-block: 0 0.5rem;
+}
+
+.checklist-profile form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  max-width: 42rem;
+}
+
+.checklist-profile-field {
+  display: grid;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.checklist-profile-field label {
+  color: #123f3b;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.checklist-optional,
+.checklist-field-hint {
+  color: #3f5754;
+  font-weight: 400;
+}
+
+.checklist-field-hint,
+.checklist-field-error {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.checklist-profile-field input,
+.checklist-profile-field select {
+  background: #ffffff;
+  border: 2px solid #526b67;
+  border-radius: 0.5rem;
+  color: #102a2a;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  width: 100%;
+}
+
+.checklist-profile-field input[aria-invalid="true"] {
+  border-color: #991b1b;
+}
+
+.checklist-field-error {
+  color: #7f1d1d;
+  font-weight: 700;
+}
+
+.checklist-profile-submit {
+  background: #075985;
+  border: 2px solid #075985;
+  border-radius: 0.5rem;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 750;
+  min-height: 44px;
+  padding: 0.625rem 1rem;
+  width: fit-content;
+}
+
+@media (max-width: 29.99rem) {
+  .checklist-profile-submit {
+    width: 100%;
+  }
+}

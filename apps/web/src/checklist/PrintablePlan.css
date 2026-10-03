@@ -1,0 +1,6 @@
+.printable-plan { margin-top: 1.5rem; }
+@media print {
+  .printable-plan button { display: none; }
+  .printable-plan article, .printable-plan li { break-inside: avoid; }
+  .printable-plan a { overflow-wrap: anywhere; }
+}

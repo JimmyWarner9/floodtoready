@@ -1,0 +1,168 @@
+.safety-information-views {
+    display: grid;
+    gap: 0.875rem;
+    margin-top: 1.25rem;
+    min-width: 0;
+  }
+
+  .safety-information-views details {
+    border: 1px solid #6f918b;
+    border-radius: 0.625rem;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .safety-information-views summary {
+    background: #ecf7f4;
+    color: #123f3b;
+    cursor: pointer;
+    font-weight: 800;
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+
+  .information-view {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+    padding: 1rem;
+  }
+
+  .information-view > h2,
+  .information-view section > h3,
+  .scope-limitation-notice h2 {
+    color: #123f3b;
+    line-height: 1.25;
+    margin: 0;
+  }
+
+  .information-view p,
+  .information-view ul,
+  .information-view dl,
+  .scope-limitation-notice p {
+    margin-block: 0.5rem 0;
+    overflow-wrap: anywhere;
+  }
+
+  .information-note {
+    border-left: 0.3rem solid #075985;
+    padding-left: 0.75rem;
+  }
+
+  .integration-list,
+  .scope-list {
+    display: grid;
+    gap: 0.75rem;
+    list-style: none;
+    padding: 0;
+  }
+
+  .integration-list > li,
+  .scope-list > li,
+  .definition-list > div {
+    border: 1px solid #a7c2bd;
+    border-radius: 0.5rem;
+    display: grid;
+    gap: 0.4rem;
+    min-width: 0;
+    padding: 0.75rem;
+  }
+
+  .integration-list dl,
+  .definition-list,
+  .definition-list > div {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .integration-list dl > div {
+    display: grid;
+    gap: 0.15rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .integration-list dt,
+  .definition-list dt {
+    font-weight: 750;
+  }
+
+  .integration-list dd,
+  .definition-list dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .emergency-limitation,
+  .scope-emergency-escalation {
+    background: #fff1f2;
+    border: 2px solid #991b1b;
+    border-radius: 0.625rem;
+    color: #450a0a;
+    padding: 0.875rem;
+  }
+
+  .scope-limitation-notice {
+    border: 2px solid #92400e;
+    border-radius: 0.625rem;
+    display: grid;
+    gap: 0.75rem;
+    min-width: 0;
+    padding: 1rem;
+  }
+
+  .scope-emergency-escalation {
+    display: grid;
+    gap: 0.625rem;
+  }
+
+  .scope-emergency-contact {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .scope-emergency-contact a {
+    align-items: center;
+    background: #991b1b;
+    border-radius: 0.5rem;
+    color: #ffffff;
+    display: inline-flex;
+    font-weight: 800;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.625rem 1rem;
+    text-decoration: underline;
+    width: fit-content;
+  }
+
+  @media (min-width: 40rem) {
+    .integration-list dl > div {
+      grid-template-columns: minmax(10rem, 0.4fr) minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 29.99rem) {
+    .scope-emergency-contact a {
+      width: 100%;
+    }
+  }
+
+  @media print {
+    .safety-information-views details {
+      border: 0;
+    }
+
+    .safety-information-views details > summary {
+      display: none;
+    }
+
+    .safety-information-views details:not([open]) > :not(summary) {
+      display: block;
+    }
+
+  .information-view,
+  .scope-list > li,
+  .integration-list > li,
+  .definition-list > div {
+    break-inside: avoid;
+  }
+}

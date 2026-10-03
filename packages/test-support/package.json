@@ -1,0 +1,30 @@
+{
+  "name": "@banjir-ready/test-support",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
+  "files": ["dist"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --build --watch --preserveWatchOutput",
+    "typecheck": "tsc --build --pretty false",
+    "lint": "eslint .",
+    "test": "node ../../scripts/run-tests.mjs",
+    "build": "tsc --build --pretty false"
+  },
+  "dependencies": {
+    "@banjir-ready/contracts": "*",
+    "@banjir-ready/fixtures": "*"
+  }
+}
+

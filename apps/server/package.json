@@ -1,0 +1,23 @@
+{
+  "name": "@banjir-ready/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "typecheck": "tsc --build --pretty false",
+    "lint": "eslint .",
+    "test": "node ../../scripts/run-tests.mjs",
+    "build": "tsc --build --pretty false",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@banjir-ready/contracts": "*",
+    "@banjir-ready/fixtures": "*",
+    "express": "4.21.2"
+  }
+}
+

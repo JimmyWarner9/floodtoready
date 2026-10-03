@@ -1,0 +1,30 @@
+{
+  "name": "@banjir-ready/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --configLoader runner",
+    "typecheck": "tsc --build --pretty false",
+    "lint": "eslint .",
+    "test": "node ../../scripts/run-tests.mjs",
+    "build": "tsc --build --pretty false && vite build --configLoader runner",
+    "demo-acceptance": "playwright test"
+  },
+  "dependencies": {
+    "@banjir-ready/contracts": "*",
+    "@banjir-ready/fixtures": "*",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@banjir-ready/test-support": "*",
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.2.0",
+    "@testing-library/user-event": "14.6.1"
+  }
+}
+
