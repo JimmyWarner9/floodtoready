@@ -1,4 +1,5 @@
 import express from 'express';
+import { createModelPredictionsHandler } from './model-predictions.js';
 import { createWeatherHandler } from './weather.js';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
@@ -23,10 +24,12 @@ export function createApplication() {
   app.disable('x-powered-by');
   app.use(securityHeadersMiddleware);
   app.get('/api/weather', createWeatherHandler());
+  app.get('/api/predictions', createModelPredictionsHandler());
   app.use(express.static(assets));
   app.get('*', (req, res, next) => { if (req.path.startsWith('/api/')) { next(); return; } res.sendFile(resolve(assets, 'index.html')); });
   app.use(boundary);
   return app;
 }
+
 
 

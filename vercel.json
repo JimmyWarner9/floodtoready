@@ -5,6 +5,9 @@
   "functions": {
     "api/weather.ts": {
       "maxDuration": 15
+    },
+    "api/predictions.ts": {
+      "maxDuration": 15
     }
   }
 }
