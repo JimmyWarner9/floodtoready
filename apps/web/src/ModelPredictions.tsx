@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from './localization/LanguageProvider';
 
 const keys = ['temperature_c', 'rainfall_mm', 'storm_observed', 'flood_observed'] as const;
@@ -28,7 +28,8 @@ function ModelIcon({ index }: { index: number }) {
 export function ModelPredictions() {
   const { language } = useLanguage(); const ms = language === 'ms';
   const [report, setReport] = useState<Report | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const manualReport = useRef(false);
   const [loading, setLoading] = useState(true);
   const [automatic, setAutomatic] = useState(false);
   useEffect(() => {
@@ -36,7 +37,7 @@ export function ModelPredictions() {
     fetch('/api/predictions', { signal: abort.signal }).then(async response => {
       if (!response.ok) throw new Error('unavailable');
       const body = validate(await response.json());
-      if (!abort.signal.aborted) { setReport(body); setAutomatic(true); }
+      if (!abort.signal.aborted && !manualReport.current) { setReport(body); setAutomatic(true); }
     }).catch(() => {}).finally(() => { if (!abort.signal.aborted) setLoading(false); });
     return () => abort.abort();
   }, []);
@@ -56,11 +57,22 @@ export function ModelPredictions() {
     })}</div>
     <div className="model-upload-panel"><div><h4>{ms ? 'Mulakan dengan laporan anda' : 'Start with your report'}</h4><p>{ms ? 'Muatkan laporan yang telah dilatih dan diuji untuk mengisi kad di atas.' : 'Load a trained and tested report to populate the cards above.'}</p></div><label className="model-upload">{ms ? 'Muatkan forecast-report.json' : 'Load forecast-report.json'}<input type="file" accept=".json,application/json" onChange={async e => {
       const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
-      setError(false); setReport(null); setAutomatic(false);
-      try { if (file.size > 100000) throw new Error('large'); setReport(validate(JSON.parse(await file.text()))); } catch { setError(true); }
+      manualReport.current = true; setError(null); setAutomatic(false); setLoading(false);
+      try {
+        if (file.size > 100000) { setError(ms ? 'Fail terlalu besar (maksimum 100 KB).' : 'File too large (maximum 100 KB).'); return; }
+        const text = (await file.text()).replace(/^\uFEFF/, '').trim();
+        let body: unknown;
+        try { body = JSON.parse(text); } catch {
+          setError(ms ? 'Fail bukan JSON yang sah. Pilih forecast-report.json.' : 'This file is not valid JSON. Choose forecast-report.json.'); return;
+        }
+        try { setReport(validate(body)); } catch {
+          setError(ms ? 'JSON ini bukan laporan ramalan yang serasi. Pilih forecast-report.json, bukan vercel.json atau package.json.' : 'This JSON is not a compatible forecast report. Choose forecast-report.json, rather than vercel.json or package.json.');
+        }
+      } catch { setError(ms ? 'Fail tidak dapat dibaca. Cuba pilih semula.' : 'Could not read the file. Try selecting it again.'); }
     }} /></label></div>
-    {error && <p role="alert">{ms ? 'Laporan tidak sah. Gunakan fail daripada skrip latihan.' : 'Invalid report. Use the file produced by the training script.'}</p>}
+    {error && <p role="alert">{error}</p>}
     <small>{ms ? 'Fail dibaca dalam pelayar sahaja dan tidak disimpan. Muatkan semula selepas menyegarkan halaman.' : 'The file is read only in your browser and is not saved. Reload it after refreshing the page.'}</small>
   </section>;
 }
+
 
