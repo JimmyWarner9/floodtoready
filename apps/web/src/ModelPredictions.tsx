@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { RainfallScenario } from './RainfallScenario';
 import { useLanguage } from './localization/LanguageProvider';
 type Place={id:number;name:string;admin1?:string};
 type Day={date:string;min:number;max:number;rainfall:number;rainChance:number|null;code:number};
@@ -68,6 +69,7 @@ export function ModelPredictions(){
    <p>{i===0?(ms?'Minimum–maksimum harian':'Daily minimum–maximum'):i===1?(ms?'Jumlah hujan harian':'Daily precipitation total'):i===2?(ms?'Berdasarkan kod cuaca model; bukan amaran':'From model weather code; not a warning'):(ms?'Ramalan banjir setempat tidak tersedia.':'Local flood prediction unavailable.')}</p>
    {day&&i===1&&<small>{ms?'Peluang hujan':'Precipitation chance'}: {day.rainChance===null?(ms?'Tidak tersedia':'Unavailable'):day.rainChance+'%'}</small>}
   </article>)}</div>
+  {day && forecast && <RainfallScenario rainfall={day.rainfall} location={forecast.location.name} date={day.date} />}
   <small>{ms?'Sumber: ':'Source: '}<a href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Open-Meteo · CC BY 4.0 ↗</a> · {ms?'Ramalan untuk titik lokasi, bukan seluruh negeri. Ketiadaan ribut dalam model tidak menjamin cuaca selamat. Semak amaran rasmi.':'Forecasts cover a location point, not an entire state. Absence of modelled thunderstorms does not guarantee safe weather. Check official warnings.'}</small>
  </section>;
 }

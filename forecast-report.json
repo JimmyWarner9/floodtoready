@@ -1,0 +1,36 @@
+{
+  "experimental": true,
+  "location": "Shah Alam · seasonal model / model bermusim",
+  "prediction_date": "2026-10-04",
+  "source": "Open-Meteo / ERA5 reanalysis",
+  "sourceUrl": "https://open-meteo.com/en/docs/historical-weather-api",
+  "license": "CC BY 4.0",
+  "fetchedAt": "2026-10-03T08:29:21.442Z",
+  "history_start": "2023-09-24",
+  "history_end": "2026-09-23",
+  "method": "Seasonal ridge regression; chronological 80/20 holdout; monthly baseline",
+  "targets": {
+    "storm_observed": {
+      "available": false,
+      "reason": "No verified storm event observations"
+    },
+    "flood_observed": {
+      "available": false,
+      "reason": "River levels and flood event observations required"
+    },
+    "temperature_c": {
+      "available": true,
+      "model_error": 1.000643202099632,
+      "baseline_error": 1.0559792040530491,
+      "next_day_prediction": 28.313600809524228,
+      "reason": "Seasonal experimental estimate"
+    },
+    "rainfall_mm": {
+      "available": true,
+      "model_error": 5.585103664967626,
+      "baseline_error": 5.645350670887987,
+      "next_day_prediction": 5.194703117805603,
+      "reason": "Seasonal experimental estimate"
+    }
+  }
+}
